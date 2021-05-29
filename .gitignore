@@ -1,5 +1,5 @@
 dist
-tmp
+.tmp
 node_modules
 
-web.statistics.*.html
+webpack.statistics.*.html
