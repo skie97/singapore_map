@@ -12,6 +12,31 @@
         }
     ],
     "objects": {
+        "map" :{
+            "displayName": "Map options",
+            "properties": {
+                "waterColor":{
+                    "displayName": "Colour of the Water",
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
+                },
+                "landColor":{
+                    "displayName": "Colour of the Land",
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "dataPoint": {
             "displayName": "Data colors",
             "properties": {

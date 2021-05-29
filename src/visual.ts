@@ -35,35 +35,43 @@ import EnumerateVisualObjectInstancesOptions = powerbi.EnumerateVisualObjectInst
 import VisualObjectInstance = powerbi.VisualObjectInstance;
 import DataView = powerbi.DataView;
 import VisualObjectInstanceEnumerationObject = powerbi.VisualObjectInstanceEnumerationObject;
+import * as d3 from "d3";
+type Selection<T extends d3.BaseType> = d3.Selection<T, any, any, any>;
+import PrimitiveValue = powerbi.PrimitiveValue;
+import ISelectionId = powerbi.visuals.ISelectionId;
+import IVisualHost = powerbi.extensibility.visual.IVisualHost;
 
 import { VisualSettings } from "./settings";
 export class Visual implements IVisual {
-    private target: HTMLElement;
-    private updateCount: number;
+    private svg: Selection<SVGElement>;
     private settings: VisualSettings;
-    private textNode: Text;
+    private mapContainer: Selection<SVGElement>;
+    private waterSvg: Selection<SVGElement>;
+    private baseMap: Selection<SVGElement>;
+    private host: IVisualHost;
 
     constructor(options: VisualConstructorOptions) {
-        console.log('Visual constructor', options);
-        this.target = options.element;
-        this.updateCount = 0;
-        if (document) {
-            const new_p: HTMLElement = document.createElement("p");
-            new_p.appendChild(document.createTextNode("Update count:"));
-            const new_em: HTMLElement = document.createElement("em");
-            this.textNode = document.createTextNode(this.updateCount.toString());
-            new_em.appendChild(this.textNode);
-            new_p.appendChild(new_em);
-            this.target.appendChild(new_p);
-        }
+    this.svg = d3.select(options.element).append('svg');
+        this.host = options.host;
+        this.mapContainer = this.svg.append('g').classed('mapContainer', true);
+        this.waterSvg = this.svg.append('rect');
+        this.baseMap = this.mapContainer.append('g').classed('baseMap', true);
     }
 
     public update(options: VisualUpdateOptions) {
         this.settings = Visual.parseSettings(options && options.dataViews && options.dataViews[0]);
-        console.log('Visual update', options);
-        if (this.textNode) {
-            this.textNode.textContent = (this.updateCount++).toString();
-        }
+        
+        let width = options.viewport.width;
+        let height = options.viewport.height;
+
+        this.svg
+            .attr('width', width)
+            .attr('height', height);
+
+        this.waterSvg
+            .attr('width', width)
+            .attr('height', height)
+            .attr('fill', this.settings.map.waterColor);
     }
 
     private static parseSettings(dataView: DataView): VisualSettings {

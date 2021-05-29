@@ -31,6 +31,7 @@ import DataViewObjectsParser = dataViewObjectsParser.DataViewObjectsParser;
 
 export class VisualSettings extends DataViewObjectsParser {
       public dataPoint: dataPointSettings = new dataPointSettings();
+      public map: mapOptions = new mapOptions();
       }
 
     export class dataPointSettings {
@@ -44,5 +45,10 @@ export class VisualSettings extends DataViewObjectsParser {
       public fillRule: string = "";
      // Text Size
       public fontSize: number = 12;
+     }
+
+     export class mapOptions {
+       public waterColor: string ="#CAF2FF";
+       public landColor: string = "white";
      }
 
