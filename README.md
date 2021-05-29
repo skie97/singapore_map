@@ -1,0 +1,2 @@
+# A simple Power BI visual with Singapore as a base map
+In order to address the difficulty of mapping geo-rectified data in Power BI Desktop without an internet connection, a simple custom visual with Singapore as a base map was created. Although it is hard coded, the map data can be swapped with any other country or feature and the visual easily recompiled.
