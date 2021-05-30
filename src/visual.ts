@@ -44,15 +44,18 @@ import IVisualHost = powerbi.extensibility.visual.IVisualHost;
 import {geoJsonData} from "./sg_geojson";
 
 import { VisualSettings } from "./settings";
-import { GeoPermissibleObjects } from "d3";
+import { ExtendedFeature, ExtendedFeatureCollection, ExtendedGeometryCollection, GeoIdentityTransform, GeoPath, GeoPermissibleObjects, GeoProjection } from "d3";
 export class Visual implements IVisual {
     private svg: Selection<SVGElement>;
     private settings: VisualSettings;
     private mapContainer: Selection<SVGElement>;
     private waterSvg: Selection<SVGElement>;
-    private landSvg;
+    private landSvg: d3.Selection<SVGElement, any, any, any>;
                      // Selection<SVGElement> doesn't allow the attr("d") to be assigned.
+                     // UPDATE: Seems that it's not accepting a GeoPath<any, GeoPermissibleObjects>
+                     // Managed to shoeout the output into a GeoPath<any, any> not entirely understanding why it works.
                      // TODO: Need to study what is the right Selection<X,X,X,X> to take.
+    private runwaySvg: Selection<SVGElement>;
     private baseMap: Selection<SVGElement>;
     private host: IVisualHost;
     private geoData: geoJsonData;
@@ -65,8 +68,13 @@ export class Visual implements IVisual {
         this.mapContainer = this.svg.append('g').classed('mapContainer', true);
         this.baseMap = this.mapContainer.append('g').classed('baseMap', true);
         this.geoData = new geoJsonData();
-        this.landSvg = this.baseMap.append("path").classed("land", true);
-      
+        this.landSvg = this.baseMap.append("path")
+            .classed("land", true)
+            .datum({type: "FeatureCollection", features: this.geoData.data.features});
+        this.runwaySvg = this.baseMap.append("path")
+            .classed("runway", true)
+            .datum({type: "FeatureCollection", features: this.geoData.runwayData.features});
+
     }
 
     public update(options: VisualUpdateOptions) {
@@ -74,6 +82,7 @@ export class Visual implements IVisual {
         
         let width = options.viewport.width;
         let height = options.viewport.height;
+        let mapCentre: [number, number] = [103.847586, 1.335832];
 
         this.svg
             .attr('width', width)
@@ -85,15 +94,28 @@ export class Visual implements IVisual {
             .attr('fill', this.settings.map.waterColor);
         // centre [103.755335, 1.373943]
         // centre [103.820271, 1.349690]
-        // scale 100000 against 900x680 is correct size and view.
-        // TODO: Save the projection to reuse for new plottings.
+        
+        let projection: d3.GeoProjection = d3.geoMercator()
+            .center(mapCentre)
+            .scale(this.getMapScale(width, height))
+            .translate([width /2, height / 2]);
+        
         this.landSvg
-            .datum({type: "FeatureCollection", features: this.geoData.data.features})
-            .classed("baseMap", true)
-            .attr("d", d3.geoPath().projection(d3.geoMercator().center([103.847586, 1.335832]).scale(100000).translate([width /2, height / 2])))
+            .attr("d", <GeoPath<any,any>>d3.geoPath().projection(projection))
             .attr("fill", "white")
             .attr("stroke", "grey")
             .attr("stroke-width", 1);
+        
+        this.runwaySvg
+            .attr("d", <GeoPath<any,any>>d3.geoPath().projection(projection))
+            .attr("fill", "black")
+            .attr("stroke", "black")
+            .attr("stroke-width", 1);
+    }
+
+    private getMapScale(width: number, height: number): number {
+        // scale 100000 against 900x680 is correct size and view.
+        return Math.min(width/900*100000, height/680*100000);
     }
 
     private static parseSettings(dataView: DataView): VisualSettings {
