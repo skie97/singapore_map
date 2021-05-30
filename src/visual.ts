@@ -40,11 +40,73 @@ import * as d3 from "d3";
 type Selection<T extends d3.BaseType> = d3.Selection<T, any, any, any>;
 import PrimitiveValue = powerbi.PrimitiveValue;
 import ISelectionId = powerbi.visuals.ISelectionId;
+import ISelectionManager = powerbi.extensibility.ISelectionManager;
 import IVisualHost = powerbi.extensibility.visual.IVisualHost;
 import {geoJsonData} from "./sg_geojson";
 
 import { VisualSettings } from "./settings";
 import { ExtendedFeature, ExtendedFeatureCollection, ExtendedGeometryCollection, GeoIdentityTransform, GeoPath, GeoPermissibleObjects, GeoProjection } from "d3";
+import { dataRoleHelper } from "powerbi-visuals-utils-dataviewutils";
+
+interface Datapoint {
+    category: PrimitiveValue;
+    latitude: number;
+    longitude: number;
+    selectionId: ISelectionId;
+}
+
+interface ViewModel {
+    datapoints: Datapoint[],
+    num_datapoints: number
+}
+
+function visualTransform(options: VisualUpdateOptions, host: IVisualHost): ViewModel {
+    let dataViews = options.dataViews;
+    let viewModel: ViewModel = {
+        datapoints: [],
+        num_datapoints: 0
+    }
+
+    if (!dataViews
+        || !dataViews[0]
+        || !dataViews[0].table
+        || !dataViews[0].table.columns
+        || !dataViews[0].table.rows
+        || !dataRoleHelper.hasRoleInDataView(dataViews[0], "category")
+        || !dataRoleHelper.hasRoleInDataView(dataViews[0], "latitude")
+        || !dataRoleHelper.hasRoleInDataView(dataViews[0], "longitude")) {
+        return viewModel;
+    }
+    
+    let colIdx = {};
+
+    for (let i = 0; i < dataViews[0].table.columns.length; i++) {
+        if ("category" in dataViews[0].table.columns[i].roles) {
+            colIdx["category"] = i;
+        } else if ("latitude" in dataViews[0].table.columns[i].roles) {
+            colIdx["latitude"] = i;
+        } else if ("longitude" in dataViews[0].table.columns[i].roles) {
+            colIdx["longitude"] = i;
+        }
+    }
+    let tableDataview = dataViews[0].table;
+
+    tableDataview.rows.forEach((row: powerbi.DataViewTableRow, rowIndex: number) => {
+        let datapoint: Datapoint = {
+            category: row[colIdx["category"]],
+            latitude: <number>row[colIdx["latitude"]],
+            longitude: <number>row[colIdx["longitude"]],
+            selectionId: host.createSelectionIdBuilder()
+                .withTable(tableDataview, rowIndex)
+                .createSelectionId()
+        }
+        viewModel.datapoints.push(datapoint);
+        viewModel.num_datapoints++;
+    });
+
+    return viewModel;
+}
+
 export class Visual implements IVisual {
     private svg: Selection<SVGElement>;
     private settings: VisualSettings;
@@ -59,10 +121,19 @@ export class Visual implements IVisual {
     private baseMap: Selection<SVGElement>;
     private host: IVisualHost;
     private geoData: geoJsonData;
+    private viewModel: ViewModel;
+    private selectionManager: ISelectionManager;
+
+    private datapointSelection: d3.Selection<d3.BaseType, any, d3.BaseType, any>;
 
     constructor(options: VisualConstructorOptions) {
     this.svg = d3.select(options.element).append('svg');
         this.host = options.host;
+        this.selectionManager = options.host.createSelectionManager();
+
+        this.selectionManager.registerOnSelectCallback(() => {
+            this.syncSelectionState(this.datapointSelection, <ISelectionId[]>this.selectionManager.getSelectionIds());
+        });
         // Order of append is important as it's a last in, on top.
         this.waterSvg = this.svg.append('rect');
         this.mapContainer = this.svg.append('g').classed('mapContainer', true);
@@ -74,12 +145,12 @@ export class Visual implements IVisual {
         this.runwaySvg = this.baseMap.append("path")
             .classed("runway", true)
             .datum({type: "FeatureCollection", features: this.geoData.runwayData.features});
-
     }
 
     public update(options: VisualUpdateOptions) {
         this.settings = Visual.parseSettings(options && options.dataViews && options.dataViews[0]);
-        
+        this.viewModel = visualTransform(options, this.host);
+
         let width = options.viewport.width;
         let height = options.viewport.height;
         let mapCentre: [number, number] = [103.847586, 1.335832];
@@ -92,8 +163,6 @@ export class Visual implements IVisual {
             .attr('width', width)
             .attr('height', height)
             .attr('fill', this.settings.map.waterColor);
-        // centre [103.755335, 1.373943]
-        // centre [103.820271, 1.349690]
         
         let projection: d3.GeoProjection = d3.geoMercator()
             .center(mapCentre)
@@ -111,8 +180,41 @@ export class Visual implements IVisual {
             .attr("fill", "black")
             .attr("stroke", "black")
             .attr("stroke-width", 1);
+
+        this.datapointSelection = this.mapContainer
+            .selectAll(".datapoint")
+            .data(this.viewModel.datapoints);
+        
+        const datapointsMerged = this.datapointSelection
+            .enter()
+            .append("circle")
+            .classed("datapoint", true)
+            .merge(<any>this.datapointSelection)
+        
+        datapointsMerged
+            .attr("cx", d => projection([d.longitude, d.latitude])[0])
+            .attr("cy", d => projection([d.longitude, d.latitude])[1])
+            .attr("fill", "red")
+            .style("fill-opacity", 0.5)
+            .attr("r", 3)
+
+        this.syncSelectionState(
+            datapointsMerged,
+            <ISelectionId[]>this.selectionManager.getSelectionIds()
+        );
+
+        datapointsMerged.on('click', (d) => {        
+            this.selectionManager
+                .select(d.selectionId)
+                .then((ids: ISelectionId[]) => { // Important step to ensure that the selection is displayed.
+                    this.syncSelectionState(datapointsMerged, ids);
+                })
+        });
+
+        this.datapointSelection.exit().remove();
     }
 
+    // Helper function to ensure map scale is always correct.
     private getMapScale(width: number, height: number): number {
         // scale 100000 against 900x680 is correct size and view.
         return Math.min(width/900*100000, height/680*100000);
@@ -129,5 +231,45 @@ export class Visual implements IVisual {
      */
     public enumerateObjectInstances(options: EnumerateVisualObjectInstancesOptions): VisualObjectInstance[] | VisualObjectInstanceEnumerationObject {
         return VisualSettings.enumerateObjectInstances(this.settings || VisualSettings.getDefault(), options);
+    }
+
+    private syncSelectionState(
+        selection: d3.Selection<any,Datapoint,any,Datapoint>,
+        selectionIds: ISelectionId[]
+    ): void {
+        if (!selection || !selectionIds) {
+            return;
+        }
+
+        if (!selectionIds.length) {
+            const opacity: number = 0.5;
+            selection
+                .style("fill-opacity", opacity)
+
+            return;
+        }
+
+        const self: this = this;
+
+        selection.each(function (datapoint: Datapoint) {
+            const isSelected: boolean = self.isSelectionIdInArray(selectionIds, datapoint.selectionId);
+
+            const opacity: number = isSelected
+                ? 1.0
+                : 0.15;
+
+            d3.select(this)
+                .style("fill-opacity", opacity)
+        });
+    }
+
+    private isSelectionIdInArray(selectionIds: ISelectionId[], selectionId: ISelectionId): boolean {
+        if (!selectionIds || !selectionId) {
+            return false;
+        }
+
+        return selectionIds.some((currentSelectionId: ISelectionId) => {
+            return currentSelectionId.includes(selectionId);
+        });
     }
 }
