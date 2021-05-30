@@ -14,4 +14,4 @@ The runways are also drawn in as the main purpose of this display is to understa
     - Change dot colour
     - Enable Category Label
     - Category label font settings
-    - Disable runway display
+    - Disable runway display (for a more general visual)
