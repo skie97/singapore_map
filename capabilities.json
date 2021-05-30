@@ -6,16 +6,21 @@
             "kind": "Grouping"
         },
         {
-            "displayName": "Measure Data",
-            "name": "measure",
-            "kind": "Measure"
+            "displayName": "Latitude",
+            "name": "latitude",
+            "kind": "Grouping"
+        },
+        {
+            "displayName": "Longitude",
+            "name": "longitude",
+            "kind": "Grouping"
         }
     ],
     "objects": {
-        "map" :{
+        "map": {
             "displayName": "Map options",
             "properties": {
-                "waterColor":{
+                "waterColor": {
                     "displayName": "Colour of the Water",
                     "type": {
                         "fill": {
@@ -25,7 +30,7 @@
                         }
                     }
                 },
-                "landColor":{
+                "landColor": {
                     "displayName": "Colour of the Land",
                     "type": {
                         "fill": {
@@ -72,7 +77,7 @@
                         "fill": {}
                     }
                 },
-                 "fontSize": {
+                "fontSize": {
                     "displayName": "Text Size",
                     "type": {
                         "formatting": {
@@ -85,25 +90,40 @@
     },
     "dataViewMappings": [
         {
-            "categorical": {
-                "categories": {
-                    "for": {
-                        "in": "category"
-                    },
-                    "dataReductionAlgorithm": {
-                        "top": {}
-                    }
-                },
-                "values": {
+            "table": {
+                "rows": {
                     "select": [
                         {
-                            "bind": {
-                                "to": "measure"
+                            "for": {
+                                "in": "category"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "latitude"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "longitude"
                             }
                         }
                     ]
                 }
-            }
+            },
+            "conditions": [
+                {
+                    "category":{
+                        "max": 1
+                    },
+                    "latitude":{
+                        "max": 1
+                    },
+                    "longitude":{
+                        "max": 1
+                    }
+                }
+            ]
         }
     ]
 }
