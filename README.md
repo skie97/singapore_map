@@ -12,6 +12,8 @@ The runways are also drawn in as the main purpose of this display is to understa
 - Settings to
     - Change dot size
     - Change dot colour
+    - Change dot opacity settings
     - Enable Category Label
     - Category label font settings
     - Disable runway display (for a more general visual)
+    - Custom map extents

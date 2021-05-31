@@ -124,7 +124,7 @@ export class Visual implements IVisual {
     private viewModel: ViewModel;
     private selectionManager: ISelectionManager;
 
-    private datapointSelection: d3.Selection<d3.BaseType, any, d3.BaseType, any>;
+    private datapointSelection: d3.Selection<d3.BaseType, any, d3.BaseType, any>; // TODO: figure out why it's declared like this.
 
     constructor(options: VisualConstructorOptions) {
     this.svg = d3.select(options.element).append('svg');
@@ -134,7 +134,7 @@ export class Visual implements IVisual {
         this.selectionManager.registerOnSelectCallback(() => {
             this.syncSelectionState(this.datapointSelection, <ISelectionId[]>this.selectionManager.getSelectionIds());
         });
-        // Order of append is important as it's a last in, on top.
+        // Order of append is important for correct layering of the display as it's a last in, on top. It's like a stack.
         this.waterSvg = this.svg.append('rect');
         this.mapContainer = this.svg.append('g').classed('mapContainer', true);
         this.baseMap = this.mapContainer.append('g').classed('baseMap', true);
@@ -164,13 +164,13 @@ export class Visual implements IVisual {
             .attr('height', height)
             .attr('fill', this.settings.map.waterColor);
         
-        let projection: d3.GeoProjection = d3.geoMercator()
-            .center(mapCentre)
+        let projection: d3.GeoProjection = d3.geoMercator() // Save the projection so that you can reuse it to draw all the graphics.
+            .center(mapCentre)                              // It is basically a mapping function from one coordinate system to the display coordinate system.
             .scale(this.getMapScale(width, height))
             .translate([width /2, height / 2]);
         
         this.landSvg
-            .attr("d", <GeoPath<any,any>>d3.geoPath().projection(projection))
+            .attr("d", <GeoPath<any,any>>d3.geoPath().projection(projection)) // This is the hack otherwise Typescript will return a mismatch error.
             .attr("fill", "white")
             .attr("stroke", "grey")
             .attr("stroke-width", 1);
@@ -195,10 +195,10 @@ export class Visual implements IVisual {
             .attr("cx", d => projection([d.longitude, d.latitude])[0])
             .attr("cy", d => projection([d.longitude, d.latitude])[1])
             .attr("fill", "red")
-            .style("fill-opacity", 0.5)
+            .style("fill-opacity", 0.5) // Gotcha here is the fill-opacity is set as a style. Seems to work as an attr too, but I guess all must be the same.
             .attr("r", 3)
 
-        this.syncSelectionState(
+        this.syncSelectionState( // This helper function is called to ensure that the elements take selection into account.
             datapointsMerged,
             <ISelectionId[]>this.selectionManager.getSelectionIds()
         );
@@ -206,8 +206,10 @@ export class Visual implements IVisual {
         datapointsMerged.on('click', (d) => {        
             this.selectionManager
                 .select(d.selectionId)
-                .then((ids: ISelectionId[]) => { // Important step to ensure that the selection is displayed.
+                .then((ids: ISelectionId[]) => { // Important step to ensure that the selection is displayed. Otherwise it is only refreshed on another update.
                     this.syncSelectionState(datapointsMerged, ids);
+                    // TODO: Need to figure out how to capture the d3Event to check for the ctrl being pressed.
+                    // There was an original propergation stop call as well, to consume the Events.
                 })
         });
 
@@ -215,6 +217,7 @@ export class Visual implements IVisual {
     }
 
     // Helper function to ensure map scale is always correct.
+    // Might want to modify this when custom map extents are implemented.
     private getMapScale(width: number, height: number): number {
         // scale 100000 against 900x680 is correct size and view.
         return Math.min(width/900*100000, height/680*100000);
@@ -242,7 +245,7 @@ export class Visual implements IVisual {
         }
 
         if (!selectionIds.length) {
-            const opacity: number = 0.5;
+            const opacity: number = 0.5; // TODO: To store value in the settings. And pass settings object in.
             selection
                 .style("fill-opacity", opacity)
 
@@ -255,7 +258,7 @@ export class Visual implements IVisual {
             const isSelected: boolean = self.isSelectionIdInArray(selectionIds, datapoint.selectionId);
 
             const opacity: number = isSelected
-                ? 1.0
+                ? 1.0 // This is hardcoded now, by can set in the settings? Need to modify the function to have the setting variable passed in.
                 : 0.15;
 
             d3.select(this)
@@ -263,6 +266,7 @@ export class Visual implements IVisual {
         });
     }
 
+    // Unmodified helper function.
     private isSelectionIdInArray(selectionIds: ISelectionId[], selectionId: ISelectionId): boolean {
         if (!selectionIds || !selectionId) {
             return false;
