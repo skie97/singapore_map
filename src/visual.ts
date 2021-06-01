@@ -116,7 +116,10 @@ export class Visual implements IVisual {
                      // Selection<SVGElement> doesn't allow the attr("d") to be assigned.
                      // UPDATE: Seems that it's not accepting a GeoPath<any, GeoPermissibleObjects>
                      // Managed to shoeout the output into a GeoPath<any, any> not entirely understanding why it works.
-                     // TODO: Need to study what is the right Selection<X,X,X,X> to take.
+                     // UPDATE: The above issue is because the wrong @types/d3-selection was pulled.
+                     // in the default pbiviz project setup. Need to change the @types/d3 to the latest v5 version
+                     // in the package.json dep.
+                     // https://github.com/DefinitelyTyped/DefinitelyTyped/issues/48407
     private runwaySvg: Selection<SVGElement>;
     private baseMap: Selection<SVGElement>;
     private host: IVisualHost;
@@ -170,13 +173,13 @@ export class Visual implements IVisual {
             .translate([width /2, height / 2]);
         
         this.landSvg
-            .attr("d", <GeoPath<any,any>>d3.geoPath().projection(projection)) // This is the hack otherwise Typescript will return a mismatch error.
+            .attr("d", d3.geoPath().projection(projection)) // This is the hack otherwise Typescript will return a mismatch error.
             .attr("fill", "white")
             .attr("stroke", "grey")
             .attr("stroke-width", 1);
         
         this.runwaySvg
-            .attr("d", <GeoPath<any,any>>d3.geoPath().projection(projection))
+            .attr("d", d3.geoPath().projection(projection))
             .attr("fill", "black")
             .attr("stroke", "black")
             .attr("stroke-width", 1);
@@ -208,8 +211,11 @@ export class Visual implements IVisual {
                 .select(d.selectionId)
                 .then((ids: ISelectionId[]) => { // Important step to ensure that the selection is displayed. Otherwise it is only refreshed on another update.
                     this.syncSelectionState(datapointsMerged, ids);
-                    // TODO: Need to figure out how to capture the d3Event to check for the ctrl being pressed.
-                    // There was an original propergation stop call as well, to consume the Events.
+                    // NOTE: in the default project creation of pbiviz
+                    // @types/d3 5.7.21 will pull in the latest d3-selection v2 which is wrong.
+                    // because of the link @types/d3-selection@* instead of @types/d3-selection@^1
+                    // https://github.com/DefinitelyTyped/DefinitelyTyped/issues/48407
+                    // Thus the d3.event will be missing.
                 })
         });
 
