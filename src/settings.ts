@@ -35,20 +35,19 @@ export class VisualSettings extends DataViewObjectsParser {
       }
 
     export class dataPointSettings {
-     // Default color
-      public defaultColor: string = "";
-     // Show all
-      public showAllDataPoints: boolean = true;
      // Fill
-      public fill: string = "";
+      public fill: string = "#FF0000";
      // Color saturation
       public fillRule: string = "";
      // Text Size
       public fontSize: number = 12;
+      public dotSize: number = 3;
      }
 
      export class mapOptions {
        public waterColor: string ="#CAF2FF";
-       public landColor: string = "white";
+       public landColor: string = "#FFFFFF";
+       public landStrokeWidth: number = 1;
+       public showRunways: boolean = true;
      }
 

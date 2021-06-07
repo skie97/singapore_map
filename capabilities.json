@@ -39,30 +39,26 @@
                             }
                         }
                     }
+                },
+                "landStrokeWidth": {
+                    "displayName": "Land Outline Width",
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "showRunways": {
+                    "displayName": "Show Runways",
+                    "type": {
+                        "bool": true
+                    }
                 }
             }
         },
         "dataPoint": {
             "displayName": "Data colors",
             "properties": {
-                "defaultColor": {
-                    "displayName": "Default color",
-                    "type": {
-                        "fill": {
-                            "solid": {
-                                "color": true
-                            }
-                        }
-                    }
-                },
-                "showAllDataPoints": {
-                    "displayName": "Show all",
-                    "type": {
-                        "bool": true
-                    }
-                },
                 "fill": {
-                    "displayName": "Fill",
+                    "displayName": "Fill Color",
                     "type": {
                         "fill": {
                             "solid": {
@@ -75,6 +71,12 @@
                     "displayName": "Color saturation",
                     "type": {
                         "fill": {}
+                    }
+                },
+                "dotSize":{
+                    "displayName": "Dot Size",
+                    "type": {
+                        "numeric": true
                     }
                 },
                 "fontSize": {

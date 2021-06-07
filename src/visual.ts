@@ -173,16 +173,20 @@ export class Visual implements IVisual {
             .translate([width /2, height / 2]);
         
         this.landSvg
-            .attr("d", d3.geoPath().projection(projection)) // This is the hack otherwise Typescript will return a mismatch error.
-            .attr("fill", "white")
-            .attr("stroke", "grey")
-            .attr("stroke-width", 1);
-        
-        this.runwaySvg
             .attr("d", d3.geoPath().projection(projection))
-            .attr("fill", "black")
-            .attr("stroke", "black")
-            .attr("stroke-width", 1);
+            .attr("fill", this.settings.map.landColor)
+            .attr("stroke", "grey")
+            .attr("stroke-width", this.settings.map.landStrokeWidth);
+
+        if(this.settings.map.showRunways){
+            this.runwaySvg
+                .attr("d", d3.geoPath().projection(projection))
+                .attr("fill", "black")
+                .attr("stroke", "black")
+                .attr("stroke-width", 1);
+        } else {
+            this.runwaySvg.attr("d", null);
+        }
 
         this.datapointSelection = this.mapContainer
             .selectAll(".datapoint")
@@ -192,14 +196,14 @@ export class Visual implements IVisual {
             .enter()
             .append("circle")
             .classed("datapoint", true)
-            .merge(<any>this.datapointSelection)
+            .merge(<any>this.datapointSelection);
         
         datapointsMerged
             .attr("cx", d => projection([d.longitude, d.latitude])[0])
             .attr("cy", d => projection([d.longitude, d.latitude])[1])
-            .attr("fill", "red")
+            .attr("fill", this.settings.dataPoint.fill)
             .style("fill-opacity", 0.5) // Gotcha here is the fill-opacity is set as a style. Seems to work as an attr too, but I guess all must be the same.
-            .attr("r", 3)
+            .attr("r", this.settings.dataPoint.dotSize);
 
         this.syncSelectionState( // This helper function is called to ensure that the elements take selection into account.
             datapointsMerged,
