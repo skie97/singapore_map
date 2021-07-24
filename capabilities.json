@@ -51,6 +51,12 @@
                     "type": {
                         "bool": true
                     }
+                },
+                "showAerodromeBoundary": {
+                    "displayName": "Show 5km Aerodrome Boundary",
+                    "type": {
+                        "bool": true
+                    }
                 }
             }
         },

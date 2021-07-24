@@ -121,6 +121,7 @@ export class Visual implements IVisual {
                      // in the package.json dep.
                      // https://github.com/DefinitelyTyped/DefinitelyTyped/issues/48407
     private runwaySvg: Selection<SVGElement>;
+    private aerodromeBoundarySvg: Selection<SVGElement>;
     private baseMap: Selection<SVGElement>;
     private host: IVisualHost;
     private geoData: geoJsonData;
@@ -148,6 +149,9 @@ export class Visual implements IVisual {
         this.runwaySvg = this.baseMap.append("path")
             .classed("runway", true)
             .datum({type: "FeatureCollection", features: this.geoData.runwayData.features});
+        this.aerodromeBoundarySvg = this.baseMap.append("path")
+            .classed("aerodromeBoundary", true)
+            .datum({type: "FeatureCollection", features: this.geoData.aerodromeBoundaryData.features});
     }
 
     public update(options: VisualUpdateOptions) {
@@ -186,6 +190,17 @@ export class Visual implements IVisual {
                 .attr("stroke-width", 1);
         } else {
             this.runwaySvg.attr("d", null);
+        }
+
+        if(this.settings.map.showAerodromeBoundary){
+            this.aerodromeBoundarySvg
+                .attr("d", d3.geoPath().projection(projection))
+                .attr("fill", "transparent")
+                .attr("stroke", "red")
+                .attr("stroke-width", 1)
+                .attr("stroke-dasharray", "4 1");
+        } else {
+            this.aerodromeBoundarySvg.attr("d", null);
         }
 
         this.datapointSelection = this.mapContainer

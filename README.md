@@ -8,6 +8,10 @@ The data is currently displayed as red dots of 50% opacity and of radius 3.
 
 The runways are also drawn in as the main purpose of this display is to understand activities near and around the runways in Singapore. i.e. Bird activity, kites and drone activity, etc.
 
+## Features:
+- Able to show runways in Singapore
+- Able to show 5km boundary from the runways as the prohibited drone/kite activity area
+
 ## TODO:
 - Settings to
     - Change dot size
