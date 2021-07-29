@@ -107,6 +107,25 @@ function visualTransform(options: VisualUpdateOptions, host: IVisualHost): ViewM
     return viewModel;
 }
 
+function toRad(deg: number): number {
+    return deg * Math.PI / 180.0;
+}
+
+function greatCircleRad(dPointA: Datapoint, dPointB: Datapoint): number {
+    return Math.atan(Math.sqrt(
+        ( Math.cos(toRad(dPointB.latitude)) * Math.sin(toRad(Math.abs(dPointA.longitude - dPointB.longitude))) ) ** 2
+        +
+        ( Math.cos(toRad(dPointA.latitude))* Math.sin(toRad(dPointB.latitude)) 
+        - 
+        Math.sin(toRad(dPointA.latitude)) * Math.cos(toRad(dPointB.latitude)) * Math.cos(toRad(Math.abs(dPointA.longitude - dPointB.longitude))) ) ** 2
+        ) / 
+        (
+        Math.sin(toRad(dPointA.latitude)) * Math.sin(toRad(dPointB.latitude))
+        + 
+        Math.cos(toRad(dPointA.latitude)) * Math.cos(toRad(dPointB.latitude)) * Math.cos(toRad(Math.abs(dPointA.longitude - dPointB.longitude)))
+        ));
+}
+
 export class Visual implements IVisual {
     private svg: Selection<SVGElement>;
     private settings: VisualSettings;
