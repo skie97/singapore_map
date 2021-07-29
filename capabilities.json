@@ -57,6 +57,12 @@
                     "type": {
                         "bool": true
                     }
+                },
+                "heatmapRadiusInNM":{
+                    "displayName": "Heat map radius in nm. 0 is off.",
+                    "type": {
+                        "numeric": true
+                    }
                 }
             }
         },

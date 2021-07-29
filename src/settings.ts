@@ -50,5 +50,6 @@ export class VisualSettings extends DataViewObjectsParser {
        public landStrokeWidth: number = 1;
        public showRunways: boolean = true;
        public showAerodromeBoundary: boolean = true;
+       public heatmapRadiusInNM: number = 0;
      }
 
