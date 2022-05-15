@@ -48,7 +48,7 @@ import { VisualSettings } from "./settings";
 import { ExtendedFeature, ExtendedFeatureCollection, ExtendedGeometryCollection, GeoIdentityTransform, GeoPath, GeoPermissibleObjects, GeoProjection } from "d3";
 import { dataRoleHelper } from "powerbi-visuals-utils-dataviewutils";
 
-const mapGeoJsonURL: string = "";
+const mapGeoJsonURL: string = "https://www.ravensloft.dev/maps/fullmap.geojson"
 
 interface Datapoint {
     category: PrimitiveValue;
@@ -197,6 +197,7 @@ export class Visual implements IVisual {
                 };
             })
             .catch(error => console.log(error));
+        
     }
 
     public update(options: VisualUpdateOptions) {
