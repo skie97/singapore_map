@@ -45,8 +45,10 @@ import IVisualHost = powerbi.extensibility.visual.IVisualHost;
 import {geoJsonData} from "./sg_geojson";
 
 import { VisualSettings } from "./settings";
-import { ExtendedFeature, ExtendedFeatureCollection, ExtendedGeometryCollection, GeoIdentityTransform, GeoPath, GeoPermissibleObjects, GeoProjection } from "d3";
+import { buffer, ExtendedFeature, ExtendedFeatureCollection, ExtendedGeometryCollection, GeoIdentityTransform, GeoPath, GeoPermissibleObjects, GeoProjection } from "d3";
 import { dataRoleHelper } from "powerbi-visuals-utils-dataviewutils";
+import { deflate, inflate } from "pako";
+import { encode, decode } from "uint8-to-base64";
 
 const mapGeoJsonURL: string = "https://www.ravensloft.dev/maps/fullmap.geojson"
 
@@ -169,6 +171,13 @@ export class Visual implements IVisual {
         this.baseOtherMap = this.mapContainer.append('g').classed('baseOtherMap', true);
         this.baseMap = this.mapContainer.append('g').classed('baseMap', true);
         this.geoData = new geoJsonData();
+
+        // This uses the pako (zlib implementation with the types from DefinitelyTyped)
+        // A useful website to check is : https://www.typescriptlang.org/dt/search?search=zlib and https://github.com/DefinitelyTyped/DefinitelyTyped
+        // Source link is https://stackoverflow.com/questions/38224232/how-to-consume-npm-modules-from-typescript
+        this.geoData.runwayData = JSON.parse(String.fromCharCode.apply(null,inflate(decode(this.geoData.runwayCompress))));
+        this.geoData.aerodromeBoundaryData = JSON.parse(String.fromCharCode.apply(null,inflate(decode(this.geoData.aerodromeBoundaryCompress))));
+
         // this.landSvg = this.baseMap.append("path")
         //     .classed("land", true)
         //     .datum({type: "FeatureCollection", features: this.geoData.data.features});
@@ -197,7 +206,16 @@ export class Visual implements IVisual {
                 };
             })
             .catch(error => console.log(error));
-        
+        const toCompress: string = JSON.stringify(this.geoData.aerodromeBoundaryData);
+        var enc = new TextEncoder();
+        const uArray: Uint8Array = enc.encode(toCompress);
+        const compress = deflate(uArray);
+        var dec = new TextDecoder();
+        const base64Data = this.geoData.aerodromeBoundaryCompress;
+        // const base64Data = encode(compress);
+        // console.log(base64Data);
+        const rawData = decode(base64Data);
+        console.log(String.fromCharCode.apply(null,inflate(rawData)));
     }
 
     public update(options: VisualUpdateOptions) {
@@ -209,7 +227,7 @@ export class Visual implements IVisual {
         let width = options.viewport.width;
         let height = options.viewport.height;
         let mapCentre: [number, number] = [103.847586, 1.335832];
-
+        
         this.svg
             .attr('width', width)
             .attr('height', height);
