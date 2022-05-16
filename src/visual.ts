@@ -50,7 +50,7 @@ import { dataRoleHelper } from "powerbi-visuals-utils-dataviewutils";
 import { deflate, inflate } from "pako";
 import { encode, decode } from "uint8-to-base64";
 
-const mapGeoJsonURL: string = "https://www.ravensloft.dev/maps/fullmap.geojson"
+const mapGeoJsonURL: string = ""
 
 interface Datapoint {
     category: PrimitiveValue;
@@ -135,7 +135,7 @@ export class Visual implements IVisual {
     private settings: VisualSettings;
     private mapContainer: Selection<SVGElement>;
     private waterSvg: Selection<SVGElement>;
-    private landSvg: d3.Selection<SVGElement, any, any, any>;
+    private sgSvg: d3.Selection<SVGElement, any, any, any>;
                      // Selection<SVGElement> doesn't allow the attr("d") to be assigned.
                      // UPDATE: Seems that it's not accepting a GeoPath<any, GeoPermissibleObjects>
                      // Managed to shoeout the output into a GeoPath<any, any> not entirely understanding why it works.
@@ -143,7 +143,8 @@ export class Visual implements IVisual {
                      // in the default pbiviz project setup. Need to change the @types/d3 to the latest v5 version
                      // in the package.json dep.
                      // https://github.com/DefinitelyTyped/DefinitelyTyped/issues/48407
-    private otherLandSvg: Selection<SVGElement>;
+    private mySvg: Selection<SVGElement>;
+    private indoSvg: Selection<SVGElement>;
     private runwaySvg: Selection<SVGElement>;
     private aerodromeBoundarySvg: Selection<SVGElement>;
     private baseMap: Selection<SVGElement>;
@@ -177,10 +178,11 @@ export class Visual implements IVisual {
         // Source link is https://stackoverflow.com/questions/38224232/how-to-consume-npm-modules-from-typescript
         this.geoData.runwayData = JSON.parse(String.fromCharCode.apply(null,inflate(decode(this.geoData.runwayCompress))));
         this.geoData.aerodromeBoundaryData = JSON.parse(String.fromCharCode.apply(null,inflate(decode(this.geoData.aerodromeBoundaryCompress))));
-
-        // this.landSvg = this.baseMap.append("path")
-        //     .classed("land", true)
-        //     .datum({type: "FeatureCollection", features: this.geoData.data.features});
+        this.geoData.data = JSON.parse(new TextDecoder().decode(inflate(decode(this.geoData.dataCompress))));
+        // this.geoData.data = JSON.parse(String.fromCharCode.apply(null,inflate(decode(this.geoData.dataCompress))));
+        this.sgSvg = this.baseMap.append("path")
+            .classed("land", true)
+            .datum({type: "FeatureCollection", features: this.geoData.data.features});
         this.runwaySvg = this.baseMap.append("path")
             .classed("runway", true)
             .datum({type: "FeatureCollection", features: this.geoData.runwayData.features});
@@ -198,7 +200,7 @@ export class Visual implements IVisual {
             .then(response => response.json())
             .then(data => {
                 this.externalData = data;
-                this.otherLandSvg = this.baseOtherMap.append("path")
+                this.mySvg = this.baseOtherMap.append("path")
                     .classed("otherLand", true)
                     .datum({type: "FeatureCollection", features: this.externalData.features});
                 if(this.oldVisualOptions != null) {
@@ -242,14 +244,14 @@ export class Visual implements IVisual {
             .scale(this.getMapScale(width, height))
             .translate([width /2, height / 2]);
         
-        // this.landSvg
-        //     .attr("d", d3.geoPath().projection(projection))
-        //     .attr("fill", this.settings.map.landColor)
-        //     .attr("stroke", "grey")
-        //     .attr("stroke-width", this.settings.map.landStrokeWidth);
+        this.sgSvg
+            .attr("d", d3.geoPath().projection(projection))
+            .attr("fill", this.settings.map.landColor)
+            .attr("stroke", "grey")
+            .attr("stroke-width", this.settings.map.landStrokeWidth);
 
-        if(this.otherLandSvg != null) {
-            this.otherLandSvg
+        if(this.mySvg != null) {
+            this.mySvg
                 .attr("d", d3.geoPath().projection(projection))
                 .attr("fill", this.settings.map.landColor)
                 .attr("stroke", "grey")
