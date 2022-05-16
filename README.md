@@ -11,6 +11,10 @@ The runways are also drawn in as the main purpose of this display is to understa
 ## Features:
 - Able to show runways in Singapore
 - Able to show 5km boundary from the runways as the prohibited drone/kite activity area
+- Embedded mid resolution map of Singapore
+- Embedded low resolution map of Indonesia
+- Embedded mid resolution map of Malaysia
+- Definable Map Centre (in DD) and Map Scale.
 
 ## TODO:
 - Settings to
@@ -20,4 +24,4 @@ The runways are also drawn in as the main purpose of this display is to understa
     - Enable Category Label
     - Category label font settings
     - ~~Disable runway display (for a more general visual)~~
-    - Custom map extents
+    - ~~Custom map extents~~

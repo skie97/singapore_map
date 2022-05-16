@@ -45,11 +45,15 @@ export class VisualSettings extends DataViewObjectsParser {
      }
 
      export class mapOptions {
+       public centreLat: number = 1.335832;
+       public centreLong: number = 103.847586;
+       public mapScale: number = 100000;
        public waterColor: string ="#CAF2FF";
        public landColor: string = "#FFFFFF";
        public landStrokeWidth: number = 1;
        public showRunways: boolean = true;
        public showAerodromeBoundary: boolean = true;
        public heatmapRadiusInNM: number = 0;
+       
      }
 

@@ -20,6 +20,24 @@
         "map": {
             "displayName": "Map options",
             "properties": {
+                "centreLat":{
+                    "displayName": "Centre of Map (Latitude) in DD",
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "centreLong":{
+                    "displayName": "Centre of Map (Longitude) in DD",
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "mapScale":{
+                    "displayName": "Map Scale",
+                    "type": {
+                        "numeric": true
+                    }
+                },
                 "waterColor": {
                     "displayName": "Colour of the Water",
                     "type": {

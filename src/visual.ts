@@ -181,7 +181,6 @@ export class Visual implements IVisual {
         this.geoData.indoData = JSON.parse(new TextDecoder().decode(inflate(decode(this.geoData.indoDataCompress))));
         this.geoData.sgData = JSON.parse(new TextDecoder().decode(inflate(decode(this.geoData.sgDataCompress))));
         this.geoData.myData = JSON.parse(new TextDecoder().decode(inflate(decode(this.geoData.myDataCompress))));
-        // this.geoData.data = JSON.parse(String.fromCharCode.apply(null,inflate(decode(this.geoData.dataCompress))));
         
         this.indoSvg = this.baseMap.append("path")
             .classed("indoland", true)
@@ -212,7 +211,7 @@ export class Visual implements IVisual {
 
         let width = options.viewport.width;
         let height = options.viewport.height;
-        let mapCentre: [number, number] = [103.847586, 1.335832];
+        let mapCentre: [number, number] = [this.settings.map.centreLong, this.settings.map.centreLat];
         
         this.svg
             .attr('width', width)
@@ -225,7 +224,7 @@ export class Visual implements IVisual {
         
         let projection: d3.GeoProjection = d3.geoMercator() // Save the projection so that you can reuse it to draw all the graphics.
             .center(mapCentre)                              // It is basically a mapping function from one coordinate system to the display coordinate system.
-            .scale(this.getMapScale(width, height))
+            .scale(this.getMapScale(width, height, this.settings.map.mapScale))
             .translate([width /2, height / 2]);
         
         this.sgSvg
@@ -307,9 +306,9 @@ export class Visual implements IVisual {
 
     // Helper function to ensure map scale is always correct.
     // Might want to modify this when custom map extents are implemented.
-    private getMapScale(width: number, height: number): number {
+    private getMapScale(width: number, height: number, scale: number): number {
         // scale 100000 against 900x680 is correct size and view.
-        return Math.min(width/900*100000, height/680*100000);
+        return Math.min(width/900*scale, height/680*scale);
     }
 
     private static parseSettings(dataView: DataView): VisualSettings {
