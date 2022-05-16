@@ -178,11 +178,21 @@ export class Visual implements IVisual {
         // Source link is https://stackoverflow.com/questions/38224232/how-to-consume-npm-modules-from-typescript
         this.geoData.runwayData = JSON.parse(String.fromCharCode.apply(null,inflate(decode(this.geoData.runwayCompress))));
         this.geoData.aerodromeBoundaryData = JSON.parse(String.fromCharCode.apply(null,inflate(decode(this.geoData.aerodromeBoundaryCompress))));
-        this.geoData.data = JSON.parse(new TextDecoder().decode(inflate(decode(this.geoData.dataCompress))));
+        this.geoData.indoData = JSON.parse(new TextDecoder().decode(inflate(decode(this.geoData.indoDataCompress))));
+        this.geoData.sgData = JSON.parse(new TextDecoder().decode(inflate(decode(this.geoData.sgDataCompress))));
+        this.geoData.myData = JSON.parse(new TextDecoder().decode(inflate(decode(this.geoData.myDataCompress))));
         // this.geoData.data = JSON.parse(String.fromCharCode.apply(null,inflate(decode(this.geoData.dataCompress))));
+        
+        this.indoSvg = this.baseMap.append("path")
+            .classed("indoland", true)
+            .datum({type: "FeatureCollection", features: this.geoData.indoData.features});
+        this.mySvg = this.baseMap.append("path")
+            .classed("myland", true)
+            .datum({type: "FeatureCollection", features: this.geoData.myData.features});
         this.sgSvg = this.baseMap.append("path")
-            .classed("land", true)
-            .datum({type: "FeatureCollection", features: this.geoData.data.features});
+            .classed("sgland", true)
+            .datum({type: "FeatureCollection", features: this.geoData.sgData.features});
+
         this.runwaySvg = this.baseMap.append("path")
             .classed("runway", true)
             .datum({type: "FeatureCollection", features: this.geoData.runwayData.features});
@@ -192,32 +202,6 @@ export class Visual implements IVisual {
         
         let headers = new Headers();
         headers.append('Accept', 'application/json');
-
-        fetch(mapGeoJsonURL , {
-            method: 'GET',
-            headers: headers
-        })
-            .then(response => response.json())
-            .then(data => {
-                this.externalData = data;
-                this.mySvg = this.baseOtherMap.append("path")
-                    .classed("otherLand", true)
-                    .datum({type: "FeatureCollection", features: this.externalData.features});
-                if(this.oldVisualOptions != null) {
-                    this.update(this.oldVisualOptions);
-                };
-            })
-            .catch(error => console.log(error));
-        const toCompress: string = JSON.stringify(this.geoData.aerodromeBoundaryData);
-        var enc = new TextEncoder();
-        const uArray: Uint8Array = enc.encode(toCompress);
-        const compress = deflate(uArray);
-        var dec = new TextDecoder();
-        const base64Data = this.geoData.aerodromeBoundaryCompress;
-        // const base64Data = encode(compress);
-        // console.log(base64Data);
-        const rawData = decode(base64Data);
-        console.log(String.fromCharCode.apply(null,inflate(rawData)));
     }
 
     public update(options: VisualUpdateOptions) {
@@ -249,14 +233,18 @@ export class Visual implements IVisual {
             .attr("fill", this.settings.map.landColor)
             .attr("stroke", "grey")
             .attr("stroke-width", this.settings.map.landStrokeWidth);
+        
+        this.mySvg
+            .attr("d", d3.geoPath().projection(projection))
+            .attr("fill", this.settings.map.landColor)
+            .attr("stroke", "grey")
+            .attr("stroke-width", this.settings.map.landStrokeWidth);
 
-        if(this.mySvg != null) {
-            this.mySvg
-                .attr("d", d3.geoPath().projection(projection))
-                .attr("fill", this.settings.map.landColor)
-                .attr("stroke", "grey")
-                .attr("stroke-width", this.settings.map.landStrokeWidth);
-        }
+        this.indoSvg
+            .attr("d", d3.geoPath().projection(projection))
+            .attr("fill", this.settings.map.landColor)
+            .attr("stroke", "grey")
+            .attr("stroke-width", this.settings.map.landStrokeWidth);
 
         if(this.settings.map.showRunways){
             this.runwaySvg
