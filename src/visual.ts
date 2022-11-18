@@ -49,6 +49,7 @@ import { buffer, ExtendedFeature, ExtendedFeatureCollection, ExtendedGeometryCol
 import { dataRoleHelper } from "powerbi-visuals-utils-dataviewutils";
 import { deflate, inflate } from "pako";
 import { encode, decode } from "uint8-to-base64";
+import { GeoJSON } from "geojson";
 
 const mapGeoJsonURL: string = ""
 
@@ -56,11 +57,14 @@ interface Datapoint {
     category: PrimitiveValue;
     latitude: number;
     longitude: number;
+    timestamp: Date;
     selectionId: ISelectionId;
 }
 
 interface ViewModel {
     datapoints: Datapoint[],
+    tracks: {[key: string]: Datapoint[]},
+    tracksGeoJSON: GeoJSON[],
     num_datapoints: number
 }
 
@@ -68,6 +72,8 @@ function visualTransform(options: VisualUpdateOptions, host: IVisualHost): ViewM
     let dataViews = options.dataViews;
     let viewModel: ViewModel = {
         datapoints: [],
+        tracks: {},
+        tracksGeoJSON: [],
         num_datapoints: 0
     }
 
@@ -78,7 +84,9 @@ function visualTransform(options: VisualUpdateOptions, host: IVisualHost): ViewM
         || !dataViews[0].table.rows
         || !dataRoleHelper.hasRoleInDataView(dataViews[0], "category")
         || !dataRoleHelper.hasRoleInDataView(dataViews[0], "latitude")
-        || !dataRoleHelper.hasRoleInDataView(dataViews[0], "longitude")) {
+        || !dataRoleHelper.hasRoleInDataView(dataViews[0], "longitude")
+        || !dataRoleHelper.hasRoleInDataView(dataViews[0], "coordType")
+        || !dataRoleHelper.hasRoleInDataView(dataViews[0], "timestamp")) {
         return viewModel;
     }
     
@@ -91,10 +99,15 @@ function visualTransform(options: VisualUpdateOptions, host: IVisualHost): ViewM
             colIdx["latitude"] = i;
         } else if ("longitude" in dataViews[0].table.columns[i].roles) {
             colIdx["longitude"] = i;
+        } else if ("coordType" in dataViews[0].table.columns[i].roles) {
+            colIdx["coordType"] = i;
+        } else if ("timestamp" in dataViews[0].table.columns[i].roles) {
+            colIdx["timestamp"] = i;
         }
     }
     let tableDataview = dataViews[0].table;
 
+    // TODO: Test this new code.
     tableDataview.rows.forEach((row: powerbi.DataViewTableRow, rowIndex: number) => {
         let datapoint: Datapoint = {
             category: row[colIdx["category"]],
@@ -102,11 +115,41 @@ function visualTransform(options: VisualUpdateOptions, host: IVisualHost): ViewM
             longitude: <number>row[colIdx["longitude"]],
             selectionId: host.createSelectionIdBuilder()
                 .withTable(tableDataview, rowIndex)
-                .createSelectionId()
+                .createSelectionId(),
+            timestamp: (row[colIdx["timestamp"]] == null ? null : new Date(<string>row[colIdx["timestamp"]]))
         }
-        viewModel.datapoints.push(datapoint);
-        viewModel.num_datapoints++;
+        if(/point/i.test(<string>row[colIdx["coordType"]]))
+        {
+            viewModel.datapoints.push(datapoint);
+            viewModel.num_datapoints++;
+        } else if(/track/i.test(<string>row[colIdx["coordType"]]))
+        {
+            if(!(<string>row[colIdx["category"]] in viewModel.tracks))
+            {
+                viewModel.tracks[<string>row[colIdx["category"]]] = [];
+            }
+            viewModel.tracks[<string>row[colIdx["category"]]].push(datapoint);
+        }
     });
+
+    for (let key in viewModel.tracks) {
+        viewModel.tracks[key].sort((a,b) => b.timestamp.getTime() - a.timestamp.getTime());
+        viewModel.tracksGeoJSON.push({
+            type: "FeatureCollection",
+            features: [
+                {
+                    type: "Feature",
+                    geometry: {
+                        type: "LineString",
+                        coordinates: viewModel.tracks[key].map(x => [x.longitude, x.latitude])
+                    },
+                    properties: {
+                        
+                    }
+                }
+            ]
+        })
+    }
 
     return viewModel;
 }
@@ -149,6 +192,7 @@ export class Visual implements IVisual {
     private aerodromeBoundarySvg: Selection<SVGElement>;
     private baseMap: Selection<SVGElement>;
     private baseOtherMap: Selection<SVGElement>;
+    
     private host: IVisualHost;
     private geoData: geoJsonData;
     private viewModel: ViewModel;
@@ -157,6 +201,7 @@ export class Visual implements IVisual {
     private oldVisualOptions: VisualUpdateOptions = null;
 
     private datapointSelection: d3.Selection<d3.BaseType, any, d3.BaseType, any>; // TODO: figure out why it's declared like this.
+    private trackSelection: d3.Selection<d3.BaseType, any, d3.BaseType, any>;
 
     constructor(options: VisualConstructorOptions) {
         this.svg = d3.select(options.element).append('svg');
@@ -265,6 +310,22 @@ export class Visual implements IVisual {
         } else {
             this.aerodromeBoundarySvg.attr("d", null);
         }
+
+        this.trackSelection = this.mapContainer
+            .selectAll(".track")
+            .data(this.viewModel.tracksGeoJSON);
+
+        const tracksMerged = this.trackSelection
+            .enter()
+            .append("path")
+            .classed("track", true)
+            .merge(<any>this.trackSelection);
+        
+        tracksMerged
+            .attr("d", d => d3.geoPath().projection(projection)(d))
+            .attr("stroke", "green")
+            .attr("stroke-width", 1)
+        this.trackSelection.exit().remove();
 
         this.datapointSelection = this.mapContainer
             .selectAll(".datapoint")
