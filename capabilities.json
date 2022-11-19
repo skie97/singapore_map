@@ -27,6 +27,21 @@
         }
     ],
     "objects": {
+        "colorSelector": {
+            "displayName": "Data Colors",
+            "properties": {
+                "fill": {
+                    "displayName": "Color",
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "map": {
             "displayName": "Map options",
             "properties": {
@@ -95,18 +110,8 @@
             }
         },
         "dataPoint": {
-            "displayName": "Data colors",
+            "displayName": "Data Properties",
             "properties": {
-                "fill": {
-                    "displayName": "Fill Color",
-                    "type": {
-                        "fill": {
-                            "solid": {
-                                "color": true
-                            }
-                        }
-                    }
-                },
                 "fillRule": {
                     "displayName": "Color saturation",
                     "type": {
@@ -160,6 +165,25 @@
                                 "in": "timestamp"
                             }
                         }
+                    ]
+                }
+            },
+            "categorical": {
+                "categories": {
+                    "select": [
+                        {
+                            "for": {
+                                "in": "category"
+                            }
+                        }
+                    ]
+                },
+                "values": {
+                    "select": [
+                        {"for": {"in": "latitude"}},
+                        {"for": {"in": "longitude"}},
+                        {"for": {"in": "coordType"}},
+                        {"for": {"in": "timestamp"}}
                     ]
                 }
             },

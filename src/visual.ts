@@ -34,7 +34,10 @@ import IVisual = powerbi.extensibility.visual.IVisual;
 import EnumerateVisualObjectInstancesOptions = powerbi.EnumerateVisualObjectInstancesOptions;
 import VisualObjectInstance = powerbi.VisualObjectInstance;
 import DataView = powerbi.DataView;
+import DataViewCategoryColumn = powerbi.DataViewCategoryColumn;
+import ISandboxExtendedColorPalette = powerbi.extensibility.ISandboxExtendedColorPalette;
 import VisualObjectInstanceEnumerationObject = powerbi.VisualObjectInstanceEnumerationObject;
+import Fill = powerbi.Fill;
 import * as d3 from "d3";
 
 type Selection<T extends d3.BaseType> = d3.Selection<T, any, any, any>;
@@ -45,11 +48,12 @@ import IVisualHost = powerbi.extensibility.visual.IVisualHost;
 import {geoJsonData} from "./sg_geojson";
 
 import { VisualSettings } from "./settings";
-import { buffer, ExtendedFeature, ExtendedFeatureCollection, ExtendedGeometryCollection, GeoIdentityTransform, GeoPath, GeoPermissibleObjects, GeoProjection } from "d3";
+import { buffer, Color, ExtendedFeature, ExtendedFeatureCollection, ExtendedGeometryCollection, GeoIdentityTransform, GeoPath, GeoPermissibleObjects, GeoProjection } from "d3";
 import { dataRoleHelper } from "powerbi-visuals-utils-dataviewutils";
 import { deflate, inflate } from "pako";
 import { encode, decode } from "uint8-to-base64";
 import { GeoJSON } from "geojson";
+import { getValue, getCategoricalObjectValue } from "./objectEnumerationUtility";
 
 const mapGeoJsonURL: string = ""
 
@@ -58,14 +62,27 @@ interface Datapoint {
     latitude: number;
     longitude: number;
     timestamp: Date;
+    color: string;
     selectionId: ISelectionId;
 }
 
+interface ColorSettings {
+    categoryName: string;
+    color: string;
+    selectionId: ISelectionId;
+}
+
+interface Datatrack {
+    settings: ColorSettings;
+    geojson: GeoJSON;
+}
+
 interface ViewModel {
-    datapoints: Datapoint[],
-    tracks: {[key: string]: Datapoint[]},
-    tracksGeoJSON: GeoJSON[],
-    num_datapoints: number
+    datapoints: Datapoint[];
+    tracks: {[key: string]: Datapoint[]};
+    datatracks: Datatrack[];
+    num_datapoints: number;
+    trackSettings: {[key: string]: ColorSettings};
 }
 
 function visualTransform(options: VisualUpdateOptions, host: IVisualHost): ViewModel {
@@ -73,8 +90,9 @@ function visualTransform(options: VisualUpdateOptions, host: IVisualHost): ViewM
     let viewModel: ViewModel = {
         datapoints: [],
         tracks: {},
-        tracksGeoJSON: [],
-        num_datapoints: 0
+        datatracks: [],
+        num_datapoints: 0,
+        trackSettings: {}
     }
 
     if (!dataViews
@@ -91,6 +109,7 @@ function visualTransform(options: VisualUpdateOptions, host: IVisualHost): ViewM
     }
     
     let colIdx = {};
+    let colorPalette: ISandboxExtendedColorPalette = host.colorPalette;
 
     for (let i = 0; i < dataViews[0].table.columns.length; i++) {
         if ("category" in dataViews[0].table.columns[i].roles) {
@@ -105,11 +124,28 @@ function visualTransform(options: VisualUpdateOptions, host: IVisualHost): ViewM
             colIdx["timestamp"] = i;
         }
     }
-    let tableDataview = dataViews[0].table;
+
+    let category = dataViews[0].categorical.categories[0];
     debugger;
+    let reverseCatIdx = {};
+    for (let i = 0; i < category.values.length; i++) {
+        reverseCatIdx[String(category.values[i])] = i;
+    }
+
+    let tableDataview = dataViews[0].table;
     // TODO: Test this new code.
     tableDataview.rows.forEach((row: powerbi.DataViewTableRow, rowIndex: number) => {
         debugger;
+        let categoryText = String(row[colIdx["category"]]);
+        if(!(categoryText in viewModel.trackSettings)){
+            viewModel.trackSettings[categoryText] = {
+                categoryName: categoryText,
+                color: getColumnColorByIndex(category, reverseCatIdx[categoryText], colorPalette),
+                selectionId: host.createSelectionIdBuilder()
+                    .withCategory(category, reverseCatIdx[categoryText])
+                    .createSelectionId()
+            }
+        }
         let datapoint: Datapoint = {
             category: row[colIdx["category"]],
             latitude: <number>row[colIdx["latitude"]],
@@ -117,6 +153,7 @@ function visualTransform(options: VisualUpdateOptions, host: IVisualHost): ViewM
             selectionId: host.createSelectionIdBuilder()
                 .withTable(tableDataview, rowIndex)
                 .createSelectionId(),
+            color: viewModel.trackSettings[categoryText].color,
             timestamp: (row[colIdx["timestamp"]] == null ? null : new Date(<string>row[colIdx["timestamp"]]))
         }
         if(/point/i.test(<string>row[colIdx["coordType"]]))
@@ -135,24 +172,57 @@ function visualTransform(options: VisualUpdateOptions, host: IVisualHost): ViewM
 
     for (let key in viewModel.tracks) {
         viewModel.tracks[key].sort((a,b) => b.timestamp.getTime() - a.timestamp.getTime());
-        viewModel.tracksGeoJSON.push({
-            type: "FeatureCollection",
-            features: [
-                {
-                    type: "Feature",
-                    geometry: {
-                        type: "LineString",
-                        coordinates: viewModel.tracks[key].map(x => [x.longitude, x.latitude])
-                    },
-                    properties: {
-                        
-                    }
+        viewModel.datatracks.push(
+            {
+                settings: {
+                    categoryName: key,
+                    color: viewModel.trackSettings[key].color,
+                    selectionId: null,
+                },
+                geojson: {
+                    type: "FeatureCollection",
+                    features: [
+                        {
+                            type: "Feature",
+                            geometry: {
+                                type: "LineString",
+                                coordinates: viewModel.tracks[key].map(x => [x.longitude, x.latitude])
+                            },
+                            properties: {
+                                
+                            }
+                        }
+                    ]
                 }
-            ]
-        })
+            }
+        )
     }
 
     return viewModel;
+}
+
+function getColumnColorByIndex(
+    category: DataViewCategoryColumn,
+    index: number,
+    colorPalette: ISandboxExtendedColorPalette,
+): string {
+    if (colorPalette.isHighContrast) {
+        return colorPalette.background.value;
+    }
+
+    const defaultColor: Fill = {
+        solid: {
+            color: colorPalette.getColor(`${category.values[index]}`).value,
+        }
+    };
+
+    return getCategoricalObjectValue<Fill>(
+        category,
+        index,
+        'colorSelector',
+        'fill',
+        defaultColor
+    ).solid.color;
 }
 
 function toRad(deg: number): number {
@@ -314,7 +384,7 @@ export class Visual implements IVisual {
 
         this.trackSelection = this.mapContainer
             .selectAll(".track")
-            .data(this.viewModel.tracksGeoJSON);
+            .data(this.viewModel.datatracks);
 
         const tracksMerged = this.trackSelection
             .enter()
@@ -323,8 +393,8 @@ export class Visual implements IVisual {
             .merge(<any>this.trackSelection);
         
         tracksMerged
-            .attr("d", d => d3.geoPath().projection(projection)(d))
-            .attr("stroke", "green")
+            .attr("d", d => d3.geoPath().projection(projection)(d.geojson))
+            .attr("stroke", d => d.settings.color)
             .attr("stroke-width", 1)
             .attr("fill", "transparent")
 
@@ -343,7 +413,7 @@ export class Visual implements IVisual {
         datapointsMerged
             .attr("cx", d => projection([d.longitude, d.latitude])[0])
             .attr("cy", d => projection([d.longitude, d.latitude])[1])
-            .attr("fill", this.settings.dataPoint.fill)
+            .attr("fill", d => d.color)
             .style("fill-opacity", 0.5) // Gotcha here is the fill-opacity is set as a style. Seems to work as an attr too, but I guess all must be the same.
             .attr("r", this.settings.dataPoint.dotSize);
 
@@ -385,6 +455,27 @@ export class Visual implements IVisual {
      *
      */
     public enumerateObjectInstances(options: EnumerateVisualObjectInstancesOptions): VisualObjectInstance[] | VisualObjectInstanceEnumerationObject {
+        let objectName = options.objectName;
+        let objectEnumberation: VisualObjectInstance[] = [];
+
+        if (/colorSelector/.test(objectName)) {
+            for (let categoryText in this.viewModel.trackSettings) {
+                objectEnumberation.push({
+                    objectName: objectName,
+                    displayName: categoryText,
+                    properties: {
+                        fill: {
+                            solid: {
+                                color: this.viewModel.trackSettings[categoryText].color
+                            }
+                        }
+                    },
+                    selector: this.viewModel.trackSettings[categoryText].selectionId.getSelector()
+                })
+            }
+            return objectEnumberation;
+        }
+
         return VisualSettings.enumerateObjectInstances(this.settings || VisualSettings.getDefault(), options);
     }
 
