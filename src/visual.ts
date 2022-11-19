@@ -106,9 +106,10 @@ function visualTransform(options: VisualUpdateOptions, host: IVisualHost): ViewM
         }
     }
     let tableDataview = dataViews[0].table;
-
+    debugger;
     // TODO: Test this new code.
     tableDataview.rows.forEach((row: powerbi.DataViewTableRow, rowIndex: number) => {
+        debugger;
         let datapoint: Datapoint = {
             category: row[colIdx["category"]],
             latitude: <number>row[colIdx["latitude"]],
@@ -325,6 +326,8 @@ export class Visual implements IVisual {
             .attr("d", d => d3.geoPath().projection(projection)(d))
             .attr("stroke", "green")
             .attr("stroke-width", 1)
+            .attr("fill", "transparent")
+
         this.trackSelection.exit().remove();
 
         this.datapointSelection = this.mapContainer

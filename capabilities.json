@@ -17,11 +17,6 @@
         },
         {
             "displayName": "Coordinate Type (Track|Point)",
-            "requiredTypes": [
-                {
-                    "text": true
-                }
-            ],
             "name": "coordType",
             "kind": "Grouping"
         },
